@@ -1,3 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FreeLines</string>
+
+    <!-- Main Menu -->
+    <string name="new_game">New Game</string>
+    <string name="resume">Resume</string>
+    <string name="settings">Settings</string>
+    <string name="score">Score</string>
+    <string name="exit">Exit</string>
+
+    <!-- In-Game -->
+    <string name="score_label">Score: %1$d</string>
+    <string name="time_label">Time: %1$s</string>
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
+    <string name="back_to_menu">Back to Menu</string>
+
+    <!-- Game Over/Win Dialogs -->
+    <string name="game_over">Game Over</string>
+    <string name="game_won">You Win!</string>
+    <string name="your_score_label">Your Score: %1$d</string>
+    <string name="enter_your_name_hint">Enter your name</string>
+    <string name="save">Save</string>
+
+    <!-- Score Screen -->
+    <string name="high_scores">High Scores</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_language">Language</string>
+    <string name="settings_board_width">Board Width</string>
+    <string name="settings_board_height">Board Height</string>
+    <string name="settings_color_count">Number of Colors</string>
+    <string name="settings_line_size">Line Size to Clear</string>
+    <string name="settings_spawn_count">Number of New Balls</string>
+    <string name="settings_unproportional_stretching">Allow Unproportional Stretching</string>
+    <string name="settings_save_button">Save</string>
+    <string name="settings_reset_button">Reset to Default</string>
+
 </resources>

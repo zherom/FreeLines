@@ -1,12 +1,4 @@
 package com.example.freelines.game
 
-enum class BallColor {
-    RED,
-    GREEN,
-    BLUE,
-    YELLOW,
-    PURPLE,
-    ORANGE
-}
-
-data class Ball(val color: BallColor)
+// The color is now represented by a simple integer type.
+data class Ball(val colorType: Int)

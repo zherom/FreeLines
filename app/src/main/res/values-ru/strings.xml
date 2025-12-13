@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FreeLines</string>
+
+    <!-- Main Menu -->
+    <string name="new_game">Новая игра</string>
+    <string name="resume">Продолжить</string>
+    <string name="settings">Настройки</string>
+    <string name="score">Счет</string>
+    <string name="exit">Выход</string>
+
+    <!-- In-Game -->
+    <string name="score_label">Счет: %1$d</string>
+    <string name="time_label">Время: %1$s</string>
+    <string name="undo">Отменить</string>
+    <string name="redo">Повторить</string>
+    <string name="back_to_menu">В меню</string>
+
+    <!-- Game Over/Win Dialogs -->
+    <string name="game_over">Игра окончена</string>
+    <string name="game_won">Победа!</string>
+    <string name="your_score_label">Ваш счет: %1$d</string>
+    <string name="enter_your_name_hint">Введите ваше имя</string>
+    <string name="save">Сохранить</string>
+
+    <!-- Score Screen -->
+    <string name="high_scores">Рекорды</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_language">Язык</string>
+    <string name="settings_board_width">Ширина поля</string>
+    <string name="settings_board_height">Высота поля</string>
+    <string name="settings_color_count">Количество цветов</string>
+    <string name="settings_line_size">Размер линии для удаления</string>
+    <string name="settings_spawn_count">Количество новых шаров</string>
+    <string name="settings_unproportional_stretching">Разрешить непропорциональное растягивание</string>
+    <string name="settings_save_button">Сохранить</string>
+    <string name="settings_reset_button">Сбросить</string>
+
+</resources>
