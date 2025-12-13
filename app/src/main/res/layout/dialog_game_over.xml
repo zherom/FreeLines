@@ -6,6 +6,7 @@
     android:padding="24dp">
 
     <TextView
+        android:id="@+id/tv_game_over_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/game_over"
@@ -16,6 +17,7 @@
         android:id="@+id/tv_final_score"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
         android:text="@string/your_score_label" />
 
     <TextView
@@ -28,6 +30,7 @@
         android:id="@+id/et_player_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:hint="@string/enter_your_name_hint" />
 
 </LinearLayout>

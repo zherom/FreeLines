@@ -16,8 +16,9 @@
     <string name="redo">Redo</string>
     <string name="back_to_menu">Back to Menu</string>
 
-    <!-- Game Over Dialog -->
+    <!-- Game Over/Win Dialogs -->
     <string name="game_over">Game Over</string>
+    <string name="game_won">You Win!</string>
     <string name="your_score_label">Your Score: %1$d</string>
     <string name="enter_your_name_hint">Enter your name</string>
     <string name="save">Save</string>

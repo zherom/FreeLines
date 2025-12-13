@@ -16,8 +16,9 @@
     <string name="redo">Wiederholen</string>
     <string name="back_to_menu">Zurück zum Menü</string>
 
-    <!-- Game Over Dialog -->
+    <!-- Game Over/Win Dialogs -->
     <string name="game_over">Spiel zu Ende</string>
+    <string name="game_won">Gewonnen!</string>
     <string name="your_score_label">Deine Punkte: %1$d</string>
     <string name="enter_your_name_hint">Gib deinen Namen ein</string>
     <string name="save">Speichern</string>

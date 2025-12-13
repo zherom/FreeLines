@@ -29,7 +29,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private val _board = MutableLiveData<Board>()
     val board: LiveData<Board> = _board
 
-    // ... (other LiveData declarations remain the same)
     private val _selectedBallPosition = MutableLiveData<Position?>()
     val selectedBallPosition: LiveData<Position?> = _selectedBallPosition
     private val _score = MutableLiveData(0)
@@ -39,6 +38,8 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     private var timerJob: Job? = null
     private val _isGameOver = MutableLiveData(false)
     val isGameOver: LiveData<Boolean> = _isGameOver
+    private val _isGameWon = MutableLiveData(false)
+    val isGameWon: LiveData<Boolean> = _isGameWon
     private val _canUndo = MutableLiveData(false)
     val canUndo: LiveData<Boolean> = _canUndo
     private val _canRedo = MutableLiveData(false)
@@ -75,6 +76,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     fun newGame() {
         _isGameOver.value = false
+        _isGameWon.value = false
         val newBoard = Board(settings.boardWidth, settings.boardHeight)
         spawnBalls(newBoard)
         history.clear()
@@ -85,7 +87,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onCellClicked(position: Position) {
-        if (_isGameOver.value == true) return
+        if (_isGameOver.value == true || _isGameWon.value == true) return
 
         val currentBoard = _board.value?.copy() ?: return
         val selectedPos = _selectedBallPosition.value
@@ -102,25 +104,30 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
                     currentBoard.moveBall(selectedPos, position)
                     _selectedBallPosition.value = null
 
-                    val linesAfterMove = currentBoard.findLinesAt(position, settings.lineSize)
                     var newScore = _score.value ?: 0
-
+                    val linesAfterMove = currentBoard.findLinesAt(position, settings.lineSize)
+                    
                     if (linesAfterMove.isNotEmpty()) {
+                        // Line cleared: remove balls, add score, NO new balls (free turn)
                         currentBoard.removeBalls(linesAfterMove)
                         newScore += calculateScore(linesAfterMove.size)
                     } else {
+                        // No line cleared: spawn new balls and check if THEY form lines
                         val newBallPositions = spawnBalls(currentBoard)
-                        var linesAfterSpawn = emptyList<Position>()
-                        for (newPos in newBallPositions) {
-                            linesAfterSpawn += currentBoard.findLinesAt(newPos, settings.lineSize)
-                        }
+                        val linesAfterSpawn = newBallPositions.flatMap { newPos ->
+                            currentBoard.findLinesAt(newPos, settings.lineSize)
+                        }.toSet()
+
                         if (linesAfterSpawn.isNotEmpty()) {
-                            currentBoard.removeBalls(linesAfterSpawn)
+                            currentBoard.removeBalls(linesAfterSpawn.toList())
                             newScore += calculateScore(linesAfterSpawn.size)
                         }
                     }
                     
-                    if (currentBoard.isFull()) {
+                    if (currentBoard.isEmpty()) {
+                        _isGameWon.value = true
+                        timerJob?.cancel()
+                    } else if (currentBoard.isFull()) {
                         _isGameOver.value = true
                         timerJob?.cancel()
                     }
@@ -156,14 +163,72 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         return spawnedPositions
     }
 
-    // ... (Rest of the file is correct)
-    private fun saveState(board: Board, score: Int) { val newGameState = GameState(board.toBoardData(), score, _elapsedTime.value ?: 0L); if (historyIndex < history.size - 1) { history.subList(historyIndex + 1, history.size).clear() }; history.add(newGameState); historyIndex++; updateUiFromState(newGameState); updateUndoRedoState(); if (_isGameOver.value != true) { repository.saveGame(history, historyIndex) } else { repository.clearSavedGame() } }
-    fun saveHighScore(playerName: String) { repository.addHighScore(HighScore(playerName, _score.value ?: 0, _elapsedTime.value ?: 0)) }
-    fun undo() { if (historyIndex > 0) { historyIndex--; updateUiFromState(history[historyIndex]); updateUndoRedoState(); repository.saveGame(history, historyIndex) } }
-    fun redo() { if (historyIndex < history.size - 1) { historyIndex++; updateUiFromState(history[historyIndex]); updateUndoRedoState(); repository.saveGame(history, historyIndex) } }
-    private fun updateUiFromState(gameState: GameState) { _board.value = Board(gameState.boardData); _score.value = gameState.score; _elapsedTime.value = gameState.elapsedTime }
-    private fun updateUndoRedoState() { _canUndo.value = historyIndex > 0; _canRedo.value = historyIndex < history.size - 1 }
-    private fun calculateScore(ballsRemoved: Int): Int { return ballsRemoved * 2 }
-    private fun startTimer() { timerJob?.cancel(); timerJob = viewModelScope.launch { while (true) { delay(1000); _elapsedTime.postValue((_elapsedTime.value ?: 0) + 1) } } }
-    override fun onCleared() { super.onCleared(); timerJob?.cancel() }
+    private fun saveState(board: Board, score: Int) {
+        val newGameState = GameState(board.toBoardData(), score, _elapsedTime.value ?: 0L)
+        if (historyIndex < history.size - 1) {
+            history.subList(historyIndex + 1, history.size).clear()
+        }
+        history.add(newGameState)
+        historyIndex++
+        updateUiFromState(newGameState)
+        updateUndoRedoState()
+
+        if (_isGameOver.value != true && _isGameWon.value != true) {
+            repository.saveGame(history, historyIndex)
+        } else {
+            repository.clearSavedGame()
+        }
+    }
+    
+    fun saveHighScore(playerName: String) {
+        repository.addHighScore(HighScore(playerName, _score.value ?: 0, _elapsedTime.value ?: 0))
+    }
+
+    fun undo() {
+        if (historyIndex > 0) {
+            historyIndex--
+            updateUiFromState(history[historyIndex])
+            updateUndoRedoState()
+            repository.saveGame(history, historyIndex)
+        }
+    }
+
+    fun redo() {
+        if (historyIndex < history.size - 1) {
+            historyIndex++
+            updateUiFromState(history[historyIndex])
+            updateUndoRedoState()
+            repository.saveGame(history, historyIndex)
+        }
+    }
+
+    private fun updateUiFromState(gameState: GameState) {
+        _board.value = Board(gameState.boardData)
+        _score.value = gameState.score
+        _elapsedTime.value = gameState.elapsedTime
+    }
+
+    private fun updateUndoRedoState() {
+        _canUndo.value = historyIndex > 0
+        _canRedo.value = historyIndex < history.size - 1
+    }
+
+    private fun calculateScore(ballsRemoved: Int): Int {
+        return ballsRemoved * 2
+    }
+
+    private fun startTimer() {
+        timerJob?.cancel()
+        timerJob = viewModelScope.launch {
+            while (true) {
+                delay(1000)
+                _elapsedTime.postValue((_elapsedTime.value ?: 0) + 1)
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        timerJob?.cancel()
+    }
 }

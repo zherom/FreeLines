@@ -45,6 +45,10 @@ class Board(val width: Int = 9, val height: Int = 9) {
         return grid.size >= width * height
     }
 
+    fun isEmpty(): Boolean {
+        return grid.isEmpty()
+    }
+
     fun hasPath(from: Position, to: Position): Boolean {
         if (getBallAt(to) != null) return false
         val visited = mutableSetOf<Position>()
@@ -75,15 +79,10 @@ class Board(val width: Int = 9, val height: Int = 9) {
         return neighbors
     }
 
-    fun copy(): Board {
-        return Board(this.toBoardData())
-    }
-    
-    // Corrected line finding logic
     fun findLinesAt(pos: Position, lineSize: Int): List<Position> {
         val ball = getBallAt(pos) ?: return emptyList()
         val lines = mutableSetOf<Position>()
-        val directions = listOf(listOf(1, 0), listOf(0, 1), listOf(1, 1), listOf(1, -1)) // Vertical, Horizontal, Diagonal \, Diagonal /
+        val directions = listOf(listOf(1, 0), listOf(0, 1), listOf(1, 1), listOf(1, -1))
 
         for (dir in directions) {
             val line = findLineInDirection(pos, dir[0], dir[1])
@@ -94,11 +93,14 @@ class Board(val width: Int = 9, val height: Int = 9) {
         return lines.toList()
     }
 
+    fun copy(): Board {
+        return Board(this.toBoardData())
+    }
+
     private fun findLineInDirection(start: Position, dRow: Int, dCol: Int): List<Position> {
         val ball = getBallAt(start) ?: return emptyList()
         val line = mutableListOf(start)
 
-        // Search in the positive direction
         var r = start.row + dRow
         var c = start.col + dCol
         while (r in 0 until height && c in 0 until width && getBallAt(Position(r, c))?.colorType == ball.colorType) {
@@ -107,7 +109,6 @@ class Board(val width: Int = 9, val height: Int = 9) {
             c += dCol
         }
 
-        // Search in the negative direction
         r = start.row - dRow
         c = start.col - dCol
         while (r in 0 until height && c in 0 until width && getBallAt(Position(r, c))?.colorType == ball.colorType) {

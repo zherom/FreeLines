@@ -13,11 +13,12 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.example.freelines.data.GameRepository
 import com.example.freelines.game.Position
 import com.example.freelines.viewmodel.GameViewModel
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 
 class GameActivity : AppCompatActivity() {
 
@@ -47,18 +48,17 @@ class GameActivity : AppCompatActivity() {
         val newGameButton: Button = findViewById(R.id.btn_new_game_ingame)
         val backButton: Button = findViewById(R.id.btn_back_to_menu)
 
-        runBlocking {
+        lifecycleScope.launch {
             val settings = repository.settings.first()
             if (settings.unproportionalStretch) {
                 val params = boardGrid.layoutParams as ConstraintLayout.LayoutParams
                 params.dimensionRatio = null
-                boardGrid.requestLayout()
             } else {
                  val ratio = if (settings.boardWidth > 0 && settings.boardHeight > 0) "${settings.boardHeight}:${settings.boardWidth}" else "1:1"
                  val params = boardGrid.layoutParams as ConstraintLayout.LayoutParams
                  params.dimensionRatio = ratio
-                 boardGrid.requestLayout()
             }
+            boardGrid.requestLayout()
         }
 
         setupObservers()
@@ -130,18 +130,26 @@ class GameActivity : AppCompatActivity() {
         viewModel.canRedo.observe(this) { redoButton.isEnabled = it }
         
         viewModel.isGameOver.observe(this) { isOver ->
-            if (isOver) {
-                showGameOverDialog()
+            if (isOver == true) {
+                showEndGameDialog(isWin = false)
+            }
+        }
+        
+        viewModel.isGameWon.observe(this) { isWon ->
+            if (isWon == true) {
+                showEndGameDialog(isWin = true)
             }
         }
     }
 
-    private fun showGameOverDialog() {
+    private fun showEndGameDialog(isWin: Boolean) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_game_over, null)
+        val titleText = dialogView.findViewById<TextView>(R.id.tv_game_over_title)
         val scoreText = dialogView.findViewById<TextView>(R.id.tv_final_score)
         val timeText = dialogView.findViewById<TextView>(R.id.tv_final_time)
         val nameEditText = dialogView.findViewById<EditText>(R.id.et_player_name)
 
+        titleText.text = if (isWin) getString(R.string.game_won) else getString(R.string.game_over)
         scoreText.text = getString(R.string.your_score_label, viewModel.score.value ?: 0)
         timeText.text = getString(R.string.time_label, formatTime(viewModel.elapsedTime.value ?: 0))
 
