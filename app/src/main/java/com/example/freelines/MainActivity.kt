@@ -27,14 +27,17 @@ class MainActivity : AppCompatActivity() {
         val exitButton: Button = findViewById(R.id.btn_exit)
 
         newGameButton.setOnClickListener {
-            lifecycleScope.launch {
-                repository.clearSavedGame() 
-                startActivity(Intent(this@MainActivity, GameActivity::class.java))
+            val intent = Intent(this, GameActivity::class.java).apply {
+                putExtra("IS_NEW_GAME", true)
             }
+            startActivity(intent)
         }
 
         resumeButton.setOnClickListener {
-            startActivity(Intent(this, GameActivity::class.java))
+            val intent = Intent(this, GameActivity::class.java).apply {
+                putExtra("IS_NEW_GAME", false)
+            }
+            startActivity(intent)
         }
 
         settingsButton.setOnClickListener {
@@ -42,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         scoreButton.setOnClickListener {
-            Toast.makeText(this, "Score coming soon!", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, ScoreActivity::class.java))
         }
 
         exitButton.setOnClickListener {

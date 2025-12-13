@@ -16,10 +16,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicBoolean
 
-// GameState now holds the simple, serializable BoardData
-data class GameState(val boardData: BoardData, val score: Int)
+// GameState now also holds the elapsed time
+data class GameState(val boardData: BoardData, val score: Int, val elapsedTime: Long)
 
 class GameViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -49,38 +48,46 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private var history = mutableListOf<GameState>()
     private var historyIndex = -1
-    private val isInitialized = AtomicBoolean(false)
 
-    init {
+    fun startGame(isNew: Boolean) {
         viewModelScope.launch {
-            if (repository.hasSavedGame()) {
-                loadGame()
-            } else {
+            if (isNew) {
+                repository.clearSavedGame()
                 newGame()
+            } else {
+                if (repository.hasSavedGame()) {
+                    loadGame()
+                } else {
+                    newGame()
+                }
             }
-            isInitialized.set(true)
+            startTimer()
         }
     }
 
     private suspend fun loadGame() {
         history = repository.gameStateHistory.first().toMutableList()
         historyIndex = repository.gameStateIndex.first()
-        updateUiFromState(history[historyIndex])
-        startTimer()
+        if (history.isNotEmpty() && historyIndex != -1) {
+            updateUiFromState(history[historyIndex])
+            updateUndoRedoState()
+        }
     }
 
+    // This function is now public and resets the timer
     fun newGame() {
         _isGameOver.value = false
         val newBoard = Board()
         spawnBalls(newBoard, 3)
         history.clear()
         historyIndex = -1
+        _elapsedTime.value = 0L // Reset timer
         saveState(newBoard, 0)
         startTimer()
     }
 
     fun onCellClicked(position: Position) {
-        if (!isInitialized.get() || _isGameOver.value == true) return
+        if (_isGameOver.value == true) return
 
         val currentBoard = _board.value?.copy() ?: return
         val ballAtTarget = currentBoard.getBallAt(position)
@@ -122,7 +129,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun saveState(board: Board, score: Int) {
-        val newGameState = GameState(board.toBoardData(), score)
+        val newGameState = GameState(board.toBoardData(), score, _elapsedTime.value ?: 0L)
         if (historyIndex < history.size - 1) {
             history.subList(historyIndex + 1, history.size).clear()
         }
@@ -131,20 +138,15 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
         updateUiFromState(newGameState)
         updateUndoRedoState()
 
-        viewModelScope.launch {
-            if (_isGameOver.value != true) {
-                repository.saveGame(history, historyIndex)
-            } else {
-                repository.clearSavedGame()
-            }
+        if (_isGameOver.value != true) {
+            repository.saveGame(history, historyIndex)
+        } else {
+            repository.clearSavedGame()
         }
     }
     
     fun saveHighScore(playerName: String) {
-        viewModelScope.launch {
-            val newHighScore = HighScore(playerName, _score.value ?: 0, _elapsedTime.value ?: 0)
-            repository.addHighScore(newHighScore)
-        }
+        repository.addHighScore(HighScore(playerName, _score.value ?: 0, _elapsedTime.value ?: 0))
     }
 
     fun undo() {
@@ -152,7 +154,7 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             historyIndex--
             updateUiFromState(history[historyIndex])
             updateUndoRedoState()
-            viewModelScope.launch { repository.saveGame(history, historyIndex) }
+            repository.saveGame(history, historyIndex)
         }
     }
 
@@ -161,13 +163,14 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
             historyIndex++
             updateUiFromState(history[historyIndex])
             updateUndoRedoState()
-            viewModelScope.launch { repository.saveGame(history, historyIndex) }
+            repository.saveGame(history, historyIndex)
         }
     }
 
     private fun updateUiFromState(gameState: GameState) {
         _board.value = Board(gameState.boardData)
         _score.value = gameState.score
+        _elapsedTime.value = gameState.elapsedTime
     }
 
     private fun updateUndoRedoState() {
@@ -201,7 +204,6 @@ class GameViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun startTimer() {
         timerJob?.cancel()
-        // Time is part of the loaded state now, so don't reset to 0
         timerJob = viewModelScope.launch {
             while (true) {
                 delay(1000)

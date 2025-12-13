@@ -31,6 +31,9 @@ class GameActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_game)
 
+        val isNewGame = intent.getBooleanExtra("IS_NEW_GAME", true)
+        viewModel.startGame(isNewGame)
+
         boardGrid = findViewById(R.id.grid_board)
         scoreTextView = findViewById(R.id.tv_score)
         timeTextView = findViewById(R.id.tv_time)

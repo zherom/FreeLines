@@ -9,15 +9,22 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.example.freelines.viewmodel.GameState
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "game_settings")
 
 data class HighScore(val playerName: String, val score: Int, val time: Long)
 
 class GameRepository(private val context: Context) {
+
+    // A long-lived scope that is not tied to any specific screen
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val gson = Gson()
 
@@ -55,21 +62,26 @@ class GameRepository(private val context: Context) {
         }
     }
 
-    suspend fun saveGame(history: List<GameState>, index: Int) {
-        val json = gson.toJson(history)
-        context.dataStore.edit {
-            it[PreferencesKeys.GAME_STATE_HISTORY] = json
-            it[PreferencesKeys.GAME_STATE_INDEX] = index.toString()
+    // This function is no longer suspend. It launches its own background job.
+    fun saveGame(history: List<GameState>, index: Int) {
+        repositoryScope.launch {
+            val json = gson.toJson(history)
+            context.dataStore.edit {
+                it[PreferencesKeys.GAME_STATE_HISTORY] = json
+                it[PreferencesKeys.GAME_STATE_INDEX] = index.toString()
+            }
         }
     }
 
-    suspend fun addHighScore(highScore: HighScore) {
-        val currentScores = highScores.first().toMutableList()
-        currentScores.add(highScore)
-        currentScores.sortByDescending { it.score }
-        val json = gson.toJson(currentScores)
-        context.dataStore.edit {
-            it[PreferencesKeys.HIGH_SCORES] = json
+    fun addHighScore(highScore: HighScore) {
+        repositoryScope.launch {
+            val currentScores = highScores.first().toMutableList()
+            currentScores.add(highScore)
+            currentScores.sortByDescending { it.score }
+            val json = gson.toJson(currentScores)
+            context.dataStore.edit {
+                it[PreferencesKeys.HIGH_SCORES] = json
+            }
         }
     }
 
@@ -78,10 +90,12 @@ class GameRepository(private val context: Context) {
         return preferences.contains(PreferencesKeys.GAME_STATE_HISTORY)
     }
 
-    suspend fun clearSavedGame() {
-        context.dataStore.edit {
-            it.remove(PreferencesKeys.GAME_STATE_HISTORY)
-            it.remove(PreferencesKeys.GAME_STATE_INDEX)
+    fun clearSavedGame() {
+        repositoryScope.launch {
+            context.dataStore.edit {
+                it.remove(PreferencesKeys.GAME_STATE_HISTORY)
+                it.remove(PreferencesKeys.GAME_STATE_INDEX)
+            }
         }
     }
 }
