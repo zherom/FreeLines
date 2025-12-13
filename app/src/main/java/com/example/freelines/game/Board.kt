@@ -3,22 +3,20 @@ package com.example.freelines.game
 import java.util.LinkedList
 import java.util.Queue
 
-// Data Transfer Object for serialization
-data class BoardData(val grid: List<Pair<Position, Ball>>, val size: Int)
+data class BoardData(val grid: List<Pair<Position, Ball>>, val width: Int, val height: Int)
 
 data class Position(val row: Int, val col: Int)
 
-class Board(val size: Int = 9) {
+class Board(val width: Int = 9, val height: Int = 9) {
 
     private var grid: MutableList<Pair<Position, Ball>> = mutableListOf()
 
-    // Secondary constructor to restore a board from data
-    constructor(boardData: BoardData) : this(boardData.size) {
+    constructor(boardData: BoardData) : this(boardData.width, boardData.height) {
         this.grid = boardData.grid.toMutableList()
     }
 
     fun toBoardData(): BoardData {
-        return BoardData(grid.toList(), size)
+        return BoardData(grid.toList(), width, height)
     }
 
     fun getBallAt(position: Position): Ball? {
@@ -44,7 +42,7 @@ class Board(val size: Int = 9) {
     }
 
     fun isFull(): Boolean {
-        return grid.size >= size * size
+        return grid.size >= width * height
     }
 
     fun hasPath(from: Position, to: Position): Boolean {
@@ -71,50 +69,48 @@ class Board(val size: Int = 9) {
         val (row, col) = position
         val neighbors = mutableListOf<Position>()
         if (row > 0) neighbors.add(Position(row - 1, col))
-        if (row < size - 1) neighbors.add(Position(row + 1, col))
+        if (row < height - 1) neighbors.add(Position(row + 1, col))
         if (col > 0) neighbors.add(Position(row, col - 1))
-        if (col < size - 1) neighbors.add(Position(row, col + 1))
+        if (col < width - 1) neighbors.add(Position(row, col + 1))
         return neighbors
-    }
-
-    fun findLines(): List<Position> {
-        val lines = mutableSetOf<Position>()
-        for (pos in grid.map { it.first }) {
-            lines.addAll(findLineAt(pos))
-        }
-        return lines.toList()
     }
 
     fun copy(): Board {
         return Board(this.toBoardData())
     }
-
-    private fun findLineAt(pos: Position): List<Position> {
+    
+    // Corrected line finding logic
+    fun findLinesAt(pos: Position, lineSize: Int): List<Position> {
         val ball = getBallAt(pos) ?: return emptyList()
-        val lines = mutableListOf<Position>()
-        val directions = listOf(listOf(1, 0), listOf(0, 1), listOf(1, 1), listOf(1, -1))
+        val lines = mutableSetOf<Position>()
+        val directions = listOf(listOf(1, 0), listOf(0, 1), listOf(1, 1), listOf(1, -1)) // Vertical, Horizontal, Diagonal \, Diagonal /
+
         for (dir in directions) {
             val line = findLineInDirection(pos, dir[0], dir[1])
-            if (line.size >= 5) {
+            if (line.size >= lineSize) {
                 lines.addAll(line)
             }
         }
-        return lines
+        return lines.toList()
     }
 
     private fun findLineInDirection(start: Position, dRow: Int, dCol: Int): List<Position> {
         val ball = getBallAt(start) ?: return emptyList()
         val line = mutableListOf(start)
+
+        // Search in the positive direction
         var r = start.row + dRow
         var c = start.col + dCol
-        while (r in 0 until size && c in 0 until size && getBallAt(Position(r, c))?.color == ball.color) {
+        while (r in 0 until height && c in 0 until width && getBallAt(Position(r, c))?.colorType == ball.colorType) {
             line.add(Position(r, c))
             r += dRow
             c += dCol
         }
+
+        // Search in the negative direction
         r = start.row - dRow
         c = start.col - dCol
-        while (r in 0 until size && c in 0 until size && getBallAt(Position(r, c))?.color == ball.color) {
+        while (r in 0 until height && c in 0 until width && getBallAt(Position(r, c))?.colorType == ball.colorType) {
             line.add(Position(r, c))
             r -= dRow
             c -= dCol

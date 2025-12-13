@@ -8,7 +8,7 @@
         android:id="@+id/tv_highscore_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="High Scores"
+        android:text="@string/high_scores"
         android:textSize="24sp"
         android:layout_centerHorizontal="true"
         android:layout_alignParentTop="true"/>
@@ -24,7 +24,7 @@
         android:id="@+id/btn_back_from_score"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Back to Menu"
+        android:text="@string/back_to_menu"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"/>
 

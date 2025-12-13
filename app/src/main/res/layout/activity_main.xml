@@ -11,30 +11,30 @@
         android:id="@+id/btn_new_game"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="New Game" />
+        android:text="@string/new_game" />
 
     <Button
         android:id="@+id/btn_resume"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Resume" />
+        android:text="@string/resume" />
 
     <Button
         android:id="@+id/btn_settings"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Settings" />
+        android:text="@string/settings" />
 
     <Button
         android:id="@+id/btn_score"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Score" />
+        android:text="@string/score" />
 
     <Button
         android:id="@+id/btn_exit"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Exit" />
+        android:text="@string/exit" />
 
 </LinearLayout>
