@@ -1,19 +1,17 @@
 package com.example.freelines
 
 import android.content.Intent
-import android.graphics.drawable.Drawable
-import android.graphics.drawable.LayerDrawable
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.content.res.AppCompatResources
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -28,8 +26,10 @@ class GameActivity : AppCompatActivity() {
     private val viewModel: GameViewModel by viewModels()
     private lateinit var repository: GameRepository
 
-    private lateinit var boardGrid: GridLayout
-    private val cells = mutableListOf<ImageView>()
+    private lateinit var tileGrid: GridLayout
+    private lateinit var ballGrid: GridLayout
+    private val ballCells = mutableListOf<ImageView>()
+
     private lateinit var scoreTextView: TextView
     private lateinit var timeTextView: TextView
     private lateinit var undoButton: Button
@@ -43,7 +43,8 @@ class GameActivity : AppCompatActivity() {
         val isNewGame = intent.getBooleanExtra("IS_NEW_GAME", true)
         viewModel.startGame(isNewGame)
 
-        boardGrid = findViewById(R.id.grid_board)
+        tileGrid = findViewById(R.id.grid_tiles)
+        ballGrid = findViewById(R.id.grid_balls)
         scoreTextView = findViewById(R.id.tv_score)
         timeTextView = findViewById(R.id.tv_time)
         undoButton = findViewById(R.id.btn_undo)
@@ -53,15 +54,16 @@ class GameActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             val settings = repository.settings.first()
+            val container = findViewById<FrameLayout>(R.id.board_container)
             if (settings.unproportionalStretch) {
-                val params = boardGrid.layoutParams as ConstraintLayout.LayoutParams
+                val params = container.layoutParams as ConstraintLayout.LayoutParams
                 params.dimensionRatio = null
             } else {
                  val ratio = if (settings.boardWidth > 0 && settings.boardHeight > 0) "${settings.boardHeight}:${settings.boardWidth}" else "1:1"
-                 val params = boardGrid.layoutParams as ConstraintLayout.LayoutParams
+                 val params = container.layoutParams as ConstraintLayout.LayoutParams
                  params.dimensionRatio = ratio
             }
-            boardGrid.requestLayout()
+            container.requestLayout()
         }
 
         setupObservers()
@@ -69,31 +71,42 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun initializeBoardUI(width: Int, height: Int) {
-        boardGrid.removeAllViews()
-        cells.clear()
-        boardGrid.columnCount = width
-        boardGrid.rowCount = height
+        tileGrid.removeAllViews()
+        ballGrid.removeAllViews()
+        ballCells.clear()
+
+        tileGrid.columnCount = width
+        tileGrid.rowCount = height
+        ballGrid.columnCount = width
+        ballGrid.rowCount = height
 
         for (i in 0 until width * height) {
-            val cell = ImageView(this)
-            val params = GridLayout.LayoutParams(
+            // Tile Layer
+            val tileCell = ImageView(this)
+            val tileParams = GridLayout.LayoutParams(
                 GridLayout.spec(i / width, 1f),
                 GridLayout.spec(i % width, 1f)
-            ).apply {
-                this.width = 0
-                this.height = 0
-                setMargins(1, 1, 1, 1)
-            }
-            cell.layoutParams = params
-            cell.setOnClickListener { viewModel.onCellClicked(Position(i / width, i % width)) }
-            boardGrid.addView(cell)
-            cells.add(cell)
+            ).apply { this.width = 0; this.height = 0; setMargins(1, 1, 1, 1) }
+            tileCell.layoutParams = tileParams
+            tileCell.setImageResource(R.drawable.tile_empty)
+            tileGrid.addView(tileCell)
+
+            // Ball Layer
+            val ballCell = ImageView(this)
+            val ballParams = GridLayout.LayoutParams(
+                GridLayout.spec(i / width, 1f),
+                GridLayout.spec(i % width, 1f)
+            ).apply { this.width = 0; this.height = 0; setMargins(1, 1, 1, 1) }
+            ballCell.layoutParams = ballParams
+            ballCell.setOnClickListener { viewModel.onCellClicked(Position(i / width, i % width)) }
+            ballGrid.addView(ballCell)
+            ballCells.add(ballCell)
         }
     }
 
     private fun setupObservers() {
         viewModel.board.observe(this) { board ->
-            if (cells.isEmpty() || boardGrid.columnCount != board.width || boardGrid.rowCount != board.height) {
+            if (ballCells.isEmpty() || ballGrid.columnCount != board.width || ballGrid.rowCount != board.height) {
                 initializeBoardUI(board.width, board.height)
             }
             
@@ -103,15 +116,10 @@ class GameActivity : AppCompatActivity() {
                     val pos = Position(row, col)
                     val ball = board.getBallAt(pos)
 
-                    val tileDrawable = AppCompatResources.getDrawable(this, R.drawable.tile_empty)
-
                     if (ball != null) {
-                        val ballDrawable = getBallDrawable(ball.colorType)
-                        val layers = arrayOf(tileDrawable, ballDrawable)
-                        val layerDrawable = LayerDrawable(layers)
-                        if (index < cells.size) cells[index].setImageDrawable(layerDrawable)
+                        if (index < ballCells.size) ballCells[index].setImageResource(getBallDrawableId(ball.colorType))
                     } else {
-                        if (index < cells.size) cells[index].setImageDrawable(tileDrawable)
+                        if (index < ballCells.size) ballCells[index].setImageDrawable(null)
                     }
                 }
             }
@@ -119,37 +127,47 @@ class GameActivity : AppCompatActivity() {
 
         viewModel.selectedBallPosition.observe(this) { position ->
             val board = viewModel.board.value ?: return@observe
-            for (i in 0 until cells.size) {
-                cells[i].foreground = null
+            for (i in 0 until ballCells.size) {
+                ballCells[i].foreground = null
             }
             if (position != null) {
                 val index = position.row * board.width + position.col
-                if(index < cells.size) {
-                    cells[index].foreground = ContextCompat.getDrawable(this, R.drawable.selection_overlay)
+                if(index < ballCells.size) {
+                    ballCells[index].foreground = ContextCompat.getDrawable(this, R.drawable.selection_overlay)
                 }
             }
         }
 
-        // ... (other observers remain correct)
-         viewModel.score.observe(this) { score -> scoreTextView.text = getString(R.string.score_label, score) }
-        viewModel.elapsedTime.observe(this) { time -> timeTextView.text = getString(R.string.time_label, formatTime(time)) }
+        viewModel.score.observe(this) { score ->
+            scoreTextView.text = getString(R.string.score_label, score)
+        }
+
+        viewModel.elapsedTime.observe(this) { time ->
+            timeTextView.text = getString(R.string.time_label, formatTime(time))
+        }
+
         viewModel.canUndo.observe(this) { undoButton.isEnabled = it }
         viewModel.canRedo.observe(this) { redoButton.isEnabled = it }
-        viewModel.isGameOver.observe(this) { isOver -> if (isOver == true) showEndGameDialog(false) }
-        viewModel.isGameWon.observe(this) { isWon -> if (isWon == true) showEndGameDialog(true) }
+        
+        viewModel.isGameOver.observe(this) { isOver ->
+            if (isOver == true) showEndGameDialog(false)
+        }
+        
+        viewModel.isGameWon.observe(this) { isWon ->
+            if (isWon == true) showEndGameDialog(true)
+        }
     }
 
-    private fun getBallDrawable(colorType: Int): Drawable? {
-        val drawableId = when (colorType) {
+    private fun getBallDrawableId(colorType: Int): Int {
+        return when (colorType) {
             0 -> R.drawable.ball_red
             1 -> R.drawable.ball_green
             2 -> R.drawable.ball_blue
             3 -> R.drawable.ball_yellow
             4 -> R.drawable.ball_purple
-            5 -> R.drawable.ball_cyan // New color
-            else -> R.drawable.tile_empty // Fallback
+            5 -> R.drawable.ball_brown
+            else -> R.drawable.tile_empty
         }
-        return AppCompatResources.getDrawable(this, drawableId)
     }
 
     private fun showEndGameDialog(isWin: Boolean) {

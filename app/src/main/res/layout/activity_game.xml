@@ -30,17 +30,27 @@
             android:text="@string/time_label" />
     </LinearLayout>
 
-    <GridLayout
-        android:id="@+id/grid_board"
+    <FrameLayout
+        android:id="@+id/board_container"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:columnCount="9" 
-        android:rowCount="9"
         app:layout_constraintTop_toBottomOf="@id/top_bar"
         app:layout_constraintBottom_toTopOf="@id/bottom_bar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintDimensionRatio="1:1" />
+        app:layout_constraintDimensionRatio="1:1">
+
+        <GridLayout
+            android:id="@+id/grid_tiles"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <GridLayout
+            android:id="@+id/grid_balls"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/bottom_bar"
