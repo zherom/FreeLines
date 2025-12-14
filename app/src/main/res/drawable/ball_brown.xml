@@ -14,8 +14,8 @@
                 android:centerX="35"
                 android:centerY="35">
                 <item android:color="#FFFFFF" android:offset="0.0" />
-                <item android:color="#FF9800" android:offset="0.7" /> <!-- Orange -->
-                <item android:color="#E65100" android:offset="1.0" /> <!-- Darker Orange -->
+                <item android:color="#795548" android:offset="0.7" /> <!-- Brown -->
+                <item android:color="#3E2723" android:offset="1.0" /> <!-- Darker Brown -->
             </gradient>
         </aapt:attr>
     </path>
