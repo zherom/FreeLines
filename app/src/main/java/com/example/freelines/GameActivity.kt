@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageView
 import android.widget.TextView
@@ -25,8 +26,10 @@ class GameActivity : AppCompatActivity() {
     private val viewModel: GameViewModel by viewModels()
     private lateinit var repository: GameRepository
 
-    private lateinit var boardGrid: GridLayout
-    private val cells = mutableListOf<ImageView>()
+    private lateinit var tileGrid: GridLayout
+    private lateinit var ballGrid: GridLayout
+    private val ballCells = mutableListOf<ImageView>()
+
     private lateinit var scoreTextView: TextView
     private lateinit var timeTextView: TextView
     private lateinit var undoButton: Button
@@ -40,7 +43,8 @@ class GameActivity : AppCompatActivity() {
         val isNewGame = intent.getBooleanExtra("IS_NEW_GAME", true)
         viewModel.startGame(isNewGame)
 
-        boardGrid = findViewById(R.id.grid_board)
+        tileGrid = findViewById(R.id.grid_tiles)
+        ballGrid = findViewById(R.id.grid_balls)
         scoreTextView = findViewById(R.id.tv_score)
         timeTextView = findViewById(R.id.tv_time)
         undoButton = findViewById(R.id.btn_undo)
@@ -50,15 +54,16 @@ class GameActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             val settings = repository.settings.first()
+            val container = findViewById<FrameLayout>(R.id.board_container)
             if (settings.unproportionalStretch) {
-                val params = boardGrid.layoutParams as ConstraintLayout.LayoutParams
+                val params = container.layoutParams as ConstraintLayout.LayoutParams
                 params.dimensionRatio = null
             } else {
                  val ratio = if (settings.boardWidth > 0 && settings.boardHeight > 0) "${settings.boardHeight}:${settings.boardWidth}" else "1:1"
-                 val params = boardGrid.layoutParams as ConstraintLayout.LayoutParams
+                 val params = container.layoutParams as ConstraintLayout.LayoutParams
                  params.dimensionRatio = ratio
             }
-            boardGrid.requestLayout()
+            container.requestLayout()
         }
 
         setupObservers()
@@ -66,31 +71,42 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun initializeBoardUI(width: Int, height: Int) {
-        boardGrid.removeAllViews()
-        cells.clear()
-        boardGrid.columnCount = width
-        boardGrid.rowCount = height
+        tileGrid.removeAllViews()
+        ballGrid.removeAllViews()
+        ballCells.clear()
+
+        tileGrid.columnCount = width
+        tileGrid.rowCount = height
+        ballGrid.columnCount = width
+        ballGrid.rowCount = height
 
         for (i in 0 until width * height) {
-            val cell = ImageView(this)
-            val params = GridLayout.LayoutParams(
+            // Tile Layer
+            val tileCell = ImageView(this)
+            val tileParams = GridLayout.LayoutParams(
                 GridLayout.spec(i / width, 1f),
                 GridLayout.spec(i % width, 1f)
-            ).apply {
-                this.width = 0
-                this.height = 0
-                setMargins(2, 2, 2, 2)
-            }
-            cell.layoutParams = params
-            cell.setOnClickListener { viewModel.onCellClicked(Position(i / width, i % width)) }
-            boardGrid.addView(cell)
-            cells.add(cell)
+            ).apply { this.width = 0; this.height = 0; setMargins(1, 1, 1, 1) }
+            tileCell.layoutParams = tileParams
+            tileCell.setImageResource(R.drawable.tile_empty)
+            tileGrid.addView(tileCell)
+
+            // Ball Layer
+            val ballCell = ImageView(this)
+            val ballParams = GridLayout.LayoutParams(
+                GridLayout.spec(i / width, 1f),
+                GridLayout.spec(i % width, 1f)
+            ).apply { this.width = 0; this.height = 0; setMargins(1, 1, 1, 1) }
+            ballCell.layoutParams = ballParams
+            ballCell.setOnClickListener { viewModel.onCellClicked(Position(i / width, i % width)) }
+            ballGrid.addView(ballCell)
+            ballCells.add(ballCell)
         }
     }
 
     private fun setupObservers() {
         viewModel.board.observe(this) { board ->
-            if (cells.isEmpty() || boardGrid.columnCount != board.width || boardGrid.rowCount != board.height) {
+            if (ballCells.isEmpty() || ballGrid.columnCount != board.width || ballGrid.rowCount != board.height) {
                 initializeBoardUI(board.width, board.height)
             }
             
@@ -99,21 +115,25 @@ class GameActivity : AppCompatActivity() {
                     val index = row * board.width + col
                     val pos = Position(row, col)
                     val ball = board.getBallAt(pos)
-                    val drawableId = ball?.colorType?.toDrawable() ?: R.drawable.ic_cell_background
-                    if(index < cells.size) cells[index].setImageResource(drawableId)
+
+                    if (ball != null) {
+                        if (index < ballCells.size) ballCells[index].setImageResource(getBallDrawableId(ball.colorType))
+                    } else {
+                        if (index < ballCells.size) ballCells[index].setImageDrawable(null)
+                    }
                 }
             }
         }
 
         viewModel.selectedBallPosition.observe(this) { position ->
             val board = viewModel.board.value ?: return@observe
-            for (i in 0 until cells.size) {
-                cells[i].background = null
+            for (i in 0 until ballCells.size) {
+                ballCells[i].foreground = null
             }
             if (position != null) {
                 val index = position.row * board.width + position.col
-                if(index < cells.size) {
-                    cells[index].setBackgroundColor(ContextCompat.getColor(this, android.R.color.holo_blue_light))
+                if(index < ballCells.size) {
+                    ballCells[index].foreground = ContextCompat.getDrawable(this, R.drawable.selection_overlay)
                 }
             }
         }
@@ -130,15 +150,23 @@ class GameActivity : AppCompatActivity() {
         viewModel.canRedo.observe(this) { redoButton.isEnabled = it }
         
         viewModel.isGameOver.observe(this) { isOver ->
-            if (isOver == true) {
-                showEndGameDialog(isWin = false)
-            }
+            if (isOver == true) showEndGameDialog(false)
         }
         
         viewModel.isGameWon.observe(this) { isWon ->
-            if (isWon == true) {
-                showEndGameDialog(isWin = true)
-            }
+            if (isWon == true) showEndGameDialog(true)
+        }
+    }
+
+    private fun getBallDrawableId(colorType: Int): Int {
+        return when (colorType) {
+            0 -> R.drawable.ball_red
+            1 -> R.drawable.ball_green
+            2 -> R.drawable.ball_blue
+            3 -> R.drawable.ball_yellow
+            4 -> R.drawable.ball_purple
+            5 -> R.drawable.ball_brown
+            else -> R.drawable.tile_empty
         }
     }
 
@@ -178,17 +206,5 @@ class GameActivity : AppCompatActivity() {
         val minutes = seconds / 60
         val remainingSeconds = seconds % 60
         return "%02d:%02d".format(minutes, remainingSeconds)
-    }
-    
-    private fun Int.toDrawable(): Int {
-        return when (this) {
-            0 -> R.drawable.ball_red
-            1 -> R.drawable.ball_green
-            2 -> R.drawable.ball_blue
-            3 -> R.drawable.ball_yellow
-            4 -> R.drawable.ball_purple
-            5 -> R.drawable.ball_orange
-            else -> R.drawable.ic_cell_background
-        }
     }
 }
